@@ -758,3 +758,5 @@ def _demo_chat_analysis(url, platform):
 if __name__ == "__main__":
     # debug=False for production / Docker
     app.run(host="0.0.0.0", port=5000, debug=False)
+
+print("CI/CD is working 🚀")
