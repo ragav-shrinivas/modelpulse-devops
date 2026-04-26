@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ModelPulse – Entropy-Based Early Warning System</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- ================================ LOADER ================================ -->
+<div id="loader">
+    <div class="loader-bg-grid"></div>
+    <div class="loader-scanline"></div>
+    <div class="loader-content">
+        <div class="loader-logo-wrap">
+            <img src="assets/modelpulse_logo.png" class="loader-logo" alt="ModelPulse"
+                 onerror="this.style.display='none';document.getElementById('lf').style.display='flex'">
+            <div id="lf" class="logo-fb-large" style="display:none">MP</div>
+        </div>
+        <h1 class="loader-title">MODEL<span class="ac">PULSE</span></h1>
+        <p class="loader-sub">Entropy-Based Early Warning System</p>
+        <div class="loader-bar-wrap"><div class="loader-bar"><div class="loader-bar-fill" id="loaderBar"></div></div></div>
+        <p class="loader-status" id="loaderStatus">Initializing entropy engine...</p>
+    </div>
+</div>
+
+<!-- ================================ APP ================================ -->
+<div id="app" class="hidden">
+<div class="layout">
+
+<!-- ===== SIDEBAR ===== -->
+<nav class="sidebar">
+    <div class="sidebar-brand">
+        <img src="assets/modelpulse_logo.png" class="sidebar-logo" alt="ModelPulse"
+             onerror="this.style.display='none';document.getElementById('sf').style.display='flex'">
+        <div id="sf" class="logo-fb-small" style="display:none">MP</div>
+        <div class="brand-text">
+            <span class="brand-name">MODEL<span class="ac">PULSE</span></span>
+            <span class="brand-tag">v2.0 BETA</span>
+        </div>
+    </div>
+
+    <div class="sidebar-section-label">CORE</div>
+    <div class="sidebar-menu">
+        <div class="menu-item active" data-page="dashboardPage"><span class="mi">◈</span><span>Dashboard</span><span class="mbadge">LIVE</span></div>
+        <div class="menu-item" data-page="overviewPage"><span class="mi">⬡</span><span>System Overview</span></div>
+        <div class="menu-item" data-page="modulesPage"><span class="mi">⬢</span><span>Core Modules</span></div>
+    </div>
+
+    <div class="sidebar-section-label">ANALYSIS</div>
+    <div class="sidebar-menu">
+        <div class="menu-item" data-page="chatLinkPage"><span class="mi">🔗</span><span>Chat Link Analyzer</span><span class="mbadge new">NEW</span></div>
+        <div class="menu-item" data-page="klDivPage"><span class="mi">◉</span><span>KL Divergence</span></div>
+        <div class="menu-item" data-page="comparePage"><span class="mi">⇆</span><span>Model Comparison</span></div>
+        <div class="menu-item" data-page="forecastPage"><span class="mi">↗</span><span>Forecast</span></div>
+        <div class="menu-item" data-page="calibrationPage"><span class="mi">◎</span><span>Calibration</span></div>
+    </div>
+
+    <div class="sidebar-section-label">MORE</div>
+    <div class="sidebar-menu">
+        <div class="menu-item" data-page="howItWorksPage"><span class="mi">◉</span><span>How It Works</span></div>
+        <div class="menu-item" data-page="resourcesPage"><span class="mi">◧</span><span>Dataset Resources</span></div>
+        <div class="menu-item" data-page="resultsPage"><span class="mi">▣</span><span>Results</span></div>
+        <div class="menu-item" data-page="settingsPage"><span class="mi">◎</span><span>Settings</span></div>
+    </div>
+
+    <div class="sidebar-footer">
+        <div class="backend-status">
+            <div class="status-dot" id="backendDot"></div>
+            <span id="backendLabel">Checking...</span>
+        </div>
+    </div>
+</nav>
+
+<!-- ===== MAIN ===== -->
+<div class="main">
+
+<!-- TOPBAR -->
+<div class="topbar">
+    <div class="topbar-left">
+        <h3 id="pageTitle">Dashboard</h3>
+        <span class="breadcrumb">/ <span id="breadcrumbSub">Dashboard</span></span>
+    </div>
+    <div class="topbar-right">
+        <span class="user-pill" id="userStatus"><span class="u-dot"></span>Guest</span>
+        <button data-label="Login" onclick="showLogin()">Login</button>
+        <button data-label="Register" onclick="showRegister()">Register</button>
+        <button class="btn-theme" onclick="toggleTheme()">🌗</button>
+        <button class="btn-logout" onclick="logout()">Logout</button>
+    </div>
+</div>
+
+<!-- ========================================================
+     DASHBOARD
+======================================================== -->
+<div id="dashboardPage" class="page">
+    <div class="page-header">
+        <div><h1 class="page-heading">System Dashboard</h1><p class="page-desc">Real-time entropy monitoring &amp; model stability analysis</p></div>
+        <div class="live-time" id="liveTime"></div>
+    </div>
+    <div class="dash-grid">
+        <div class="card hero-card">
+            <div class="card-glow"></div>
+            <div class="hero-label">STABILITY INDEX</div>
+            <div class="kpi-value" id="mainScore">--</div>
+            <div class="kpi-sub">/ 100 points</div>
+            <div class="kpi-caption">Overall System Stability</div>
+            <canvas class="ring-canvas" id="ringCanvas" width="140" height="140"></canvas>
+        </div>
+        <div class="card upload-card">
+            <div class="card-label">DATASET UPLOAD</div>
+            <h3>Upload &amp; Analyze</h3>
+            <p class="card-desc">CSV with a <code>confidence</code> column (values 0–1).</p>
+            <label class="file-drop" id="dropZone">
+                <span class="drop-arrow">⬆</span>
+                <span class="drop-text" id="dropText">Drop CSV or click to browse</span>
+                <input type="file" id="datasetFile" accept=".csv" style="display:none">
+            </label>
+            <button id="btnUpload" data-label="Upload & Analyze" class="btn-primary w-full mt">⬆ Upload &amp; Analyze</button>
+        </div>
+        <div class="card analyze-card">
+            <div class="card-label">LIVE ANALYSIS</div>
+            <h3>Analyze Model</h3>
+            <p class="card-desc">Enter a confidence score (0 to 1).</p>
+            <input type="number" id="inputData" placeholder="e.g. 0.73" step="0.01" min="0" max="1">
+            <div class="btn-row mt">
+                <button id="btnBasic" data-label="Basic Mode" class="btn-primary">◈ Basic</button>
+                <button id="btnBlackbox" data-label="Blackbox Mode" class="btn-outline">◉ Blackbox</button>
+            </div>
+            <div id="result">
+                <div class="r-row"><span class="r-key">Stability</span><span class="r-val" id="stability">–</span></div>
+                <div class="r-row"><span class="r-key">Entropy</span><span class="r-val" id="entropy">–</span></div>
+                <div class="r-row"><span class="r-key">Confidence</span><span class="r-val" id="confidence">–</span></div>
+            </div>
+        </div>
+        <div class="card tipping-card" id="tippingCard">
+            <div class="card-label">TIPPING POINT</div>
+            <h3>Alert Status</h3>
+            <div class="tipping-badge" id="tippingBadge"><span class="tp-pulse"></span><span id="tippingStatus">IDLE</span></div>
+            <p id="tippingMsg" class="tp-msg">Awaiting first analysis...</p>
+            <div class="tp-bar"><div id="tippingBarFill" class="tp-fill"></div></div>
+        </div>
+        <div class="card chart-card">
+            <div class="card-label">ENTROPY TREND</div>
+            <h3>Live Entropy History</h3>
+            <div class="chart-wrap"><canvas id="chart"></canvas></div>
+        </div>
+        <div class="card blackbox-card">
+            <div class="card-label">BLACKBOX SIMULATION</div>
+            <h3>Response Distribution</h3>
+            <div id="responses" class="chip-list"><span class="chip-empty">Click Blackbox to simulate.</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================
+     CHAT LINK ANALYZER (NEW)
+======================================================== -->
+<div id="chatLinkPage" class="page hidden">
+    <div class="page-header">
+        <div>
+            <h1 class="page-heading">Chat Link Analyzer</h1>
+            <p class="page-desc">Paste a Claude or ChatGPT share link — we scrape &amp; measure linguistic entropy of AI responses</p>
+        </div>
+        <span class="feature-badge">🆕 NEW FEATURE</span>
+    </div>
+
+    <div class="card how-card mb20">
+        <div class="card-label">HOW THIS WORKS</div>
+        <h3>Linguistic Entropy from Real AI Conversations</h3>
+        <div class="how-steps-inline">
+            <div class="how-step-inline"><span class="step-n">1</span><span>Paste a public share link from Claude or ChatGPT</span></div>
+            <div class="how-arrow-inline">→</div>
+            <div class="how-step-inline"><span class="step-n">2</span><span>Our backend renders the page with a headless browser</span></div>
+            <div class="how-arrow-inline">→</div>
+            <div class="how-step-inline"><span class="step-n">3</span><span>Extracts all AI assistant messages</span></div>
+            <div class="how-arrow-inline">→</div>
+            <div class="how-step-inline"><span class="step-n">4</span><span>Computes vocabulary entropy, hedging score &amp; consistency</span></div>
+        </div>
+    </div>
+
+    <div class="card chat-input-card mb20">
+        <div class="card-label">INPUT</div>
+        <h3>Share Link</h3>
+        <p class="card-desc">Supports: <code>claude.ai/share/...</code> and <code>chatgpt.com/share/...</code></p>
+        <div class="url-input-row mt">
+            <input type="url" id="chatLinkInput" placeholder="https://claude.ai/share/... or https://chatgpt.com/share/...">
+            <button id="btnAnalyzeChat" data-label="Analyze Link" class="btn-primary">🔍 Analyze</button>
+        </div>
+        <div class="platform-hints">
+            <span class="platform-chip claude-chip">Claude: Share → Copy Link</span>
+            <span class="platform-chip gpt-chip">ChatGPT: Share → Copy Link</span>
+        </div>
+    </div>
+
+    <!-- RESULTS (hidden until analysis runs) -->
+    <div id="chatLinkResults" class="hidden">
+        <div class="chat-results-grid">
+
+            <div class="card hero-card chat-hero">
+                <div class="card-glow"></div>
+                <div class="hero-label">LINGUISTIC STABILITY</div>
+                <div class="kpi-value" id="cl_score">--</div>
+                <div class="kpi-sub">/ 100</div>
+                <div class="platform-tag" id="cl_platform">–</div>
+            </div>
+
+            <div class="card">
+                <div class="card-label">METRICS</div>
+                <h3>Entropy Breakdown</h3>
+                <div class="r-row"><span class="r-key">Messages Analyzed</span><span class="r-val" id="cl_msgs">–</span></div>
+                <div class="r-row"><span class="r-key">Total Words</span><span class="r-val" id="cl_words">–</span></div>
+                <div class="r-row"><span class="r-key">Vocabulary Entropy</span><span class="r-val" id="cl_vocab">–</span></div>
+                <div class="r-row"><span class="r-key">Length Entropy</span><span class="r-val" id="cl_length">–</span></div>
+                <div class="r-row"><span class="r-key">Hedge Score</span><span class="r-val" id="cl_hedge">–</span></div>
+                <div class="r-row"><span class="r-key">Response Variance</span><span class="r-val" id="cl_variance">–</span></div>
+                <div class="r-row"><span class="r-key">Composite Entropy</span><span class="r-val" id="cl_composite">–</span></div>
+                <div class="r-row"><span class="r-key">Tipping Status</span><span class="r-val" id="cl_tipping">–</span></div>
+            </div>
+
+            <div class="card">
+                <div class="card-label">INSIGHT</div>
+                <h3>Analysis</h3>
+                <p id="cl_insight" class="insight-text">–</p>
+                <div class="card-label mt" style="margin-top:18px">SAMPLE MESSAGES</div>
+                <div id="cl_samples" class="sample-msgs"></div>
+            </div>
+
+        </div>
+
+        <div id="chatDemoWarning" class="demo-warning hidden">
+            ⚠️ Running in DEMO MODE — playwright not installed. Run: <code>pip install playwright &amp;&amp; playwright install chromium</code>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================
+     KL DIVERGENCE
+======================================================== -->
+<div id="klDivPage" class="page hidden">
+    <div class="page-header">
+        <div><h1 class="page-heading">KL Divergence</h1><p class="page-desc">Detect distribution shift between current and baseline model outputs</p></div>
+    </div>
+    <div class="card mb20">
+        <div class="card-label">WHAT IS KL DIVERGENCE?</div>
+        <h3>Distribution Shift Detection</h3>
+        <p class="card-desc">KL(P‖Q) measures how much the current distribution P has drifted from the baseline Q. High KL = model behavior has changed significantly. We also compute Jensen-Shannon divergence (symmetric, bounded 0–1).</p>
+        <div class="hiw-formula">KL(P‖Q) = Σ P(x) · log₂(P(x) / Q(x))</div>
+    </div>
+    <div class="kl-grid">
+        <div class="card">
+            <div class="card-label">CURRENT MODEL (P)</div>
+            <h3>Current Confidence Values</h3>
+            <p class="card-desc">Paste comma-separated confidence values (e.g. 0.9, 0.7, 0.3...)</p>
+            <textarea id="klCurrent" class="textarea mt" placeholder="0.91, 0.85, 0.54, 0.32, 0.78, 0.65, 0.23, 0.88"></textarea>
+        </div>
+        <div class="card">
+            <div class="card-label">BASELINE MODEL (Q)</div>
+            <h3>Baseline Confidence Values</h3>
+            <p class="card-desc">Paste baseline/reference confidence values to compare against.</p>
+            <textarea id="klBaseline" class="textarea mt" placeholder="0.95, 0.92, 0.88, 0.79, 0.91, 0.84, 0.87, 0.93"></textarea>
+        </div>
+    </div>
+    <button id="btnKL" data-label="Compute KL Divergence" class="btn-primary mt">◉ Compute KL Divergence</button>
+    <div id="klResults" class="hidden">
+        <div class="results-grid mt">
+            <div class="card hero-card">
+                <div class="card-glow"></div>
+                <div class="hero-label">KL DIVERGENCE</div>
+                <div class="kpi-value" id="kl_value">--</div>
+                <div class="kpi-sub">bits</div>
+            </div>
+            <div class="card">
+                <div class="card-label">METRICS</div>
+                <h3>Divergence Statistics</h3>
+                <div class="r-row"><span class="r-key">KL Divergence</span><span class="r-val" id="kl_kl">–</span></div>
+                <div class="r-row"><span class="r-key">JS Divergence</span><span class="r-val" id="kl_js">–</span></div>
+                <div class="r-row"><span class="r-key">Shift Level</span><span class="r-val" id="kl_shift">–</span></div>
+            </div>
+            <div class="card">
+                <div class="card-label">INSIGHT</div>
+                <h3>Recommendation</h3>
+                <p id="kl_insight" class="insight-text">–</p>
+            </div>
+        </div>
+        <div class="card mt">
+            <div class="card-label">DISTRIBUTION CHART</div>
+            <h3>P vs Q Distribution (10 Bins)</h3>
+            <div class="chart-wrap"><canvas id="klChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================
+     MODEL COMPARISON
+======================================================== -->
+<div id="comparePage" class="page hidden">
+    <div class="page-header">
+        <div><h1 class="page-heading">Model Comparison</h1><p class="page-desc">Upload two CSV datasets and compare their entropy side by side</p></div>
+    </div>
+    <div class="compare-grid">
+        <div class="card">
+            <div class="card-label">MODEL A</div>
+            <h3>First Model CSV</h3>
+            <p class="card-desc">CSV with <code>confidence</code> column.</p>
+            <label class="file-drop mt"><span class="drop-arrow">⬆</span><span class="drop-text" id="dropTextA">Drop or click</span><input type="file" id="modelAFile" accept=".csv" style="display:none"></label>
+        </div>
+        <div class="card">
+            <div class="card-label">MODEL B</div>
+            <h3>Second Model CSV</h3>
+            <p class="card-desc">CSV with <code>confidence</code> column.</p>
+            <label class="file-drop mt"><span class="drop-arrow">⬆</span><span class="drop-text" id="dropTextB">Drop or click</span><input type="file" id="modelBFile" accept=".csv" style="display:none"></label>
+        </div>
+    </div>
+    <button id="btnCompare" data-label="Compare Models" class="btn-primary mt">⇆ Compare Models</button>
+    <div id="compareResults" class="hidden">
+        <div class="compare-results-grid mt">
+            <div class="card compare-model-card" id="compareCardA">
+                <div class="card-label">MODEL A</div>
+                <div class="kpi-value" id="cmp_scoreA">--</div>
+                <div class="kpi-sub">stability</div>
+                <div class="r-row"><span class="r-key">Avg Entropy</span><span class="r-val" id="cmp_entropyA">–</span></div>
+                <div class="r-row"><span class="r-key">Rows</span><span class="r-val" id="cmp_rowsA">–</span></div>
+                <div class="r-row"><span class="r-key">Tipping</span><span class="r-val" id="cmp_tippingA">–</span></div>
+            </div>
+            <div class="card compare-winner-card" id="compareWinner">
+                <div class="winner-crown">👑</div>
+                <div class="card-label">WINNER</div>
+                <div class="kpi-value" id="cmp_winner">–</div>
+                <p id="cmp_verdict" class="insight-text">–</p>
+            </div>
+            <div class="card compare-model-card" id="compareCardB">
+                <div class="card-label">MODEL B</div>
+                <div class="kpi-value" id="cmp_scoreB">--</div>
+                <div class="kpi-sub">stability</div>
+                <div class="r-row"><span class="r-key">Avg Entropy</span><span class="r-val" id="cmp_entropyB">–</span></div>
+                <div class="r-row"><span class="r-key">Rows</span><span class="r-val" id="cmp_rowsB">–</span></div>
+                <div class="r-row"><span class="r-key">Tipping</span><span class="r-val" id="cmp_tippingB">–</span></div>
+            </div>
+        </div>
+        <div class="card mt">
+            <div class="card-label">ENTROPY HISTORY COMPARISON</div>
+            <h3>Model A vs Model B Entropy Over Time</h3>
+            <div class="chart-wrap"><canvas id="compareChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================
+     FORECAST
+======================================================== -->
+<div id="forecastPage" class="page hidden">
+    <div class="page-header">
+        <div><h1 class="page-heading">Temporal Forecast</h1><p class="page-desc">Predict when entropy will cross the critical threshold</p></div>
+    </div>
+    <div class="card mb20">
+        <div class="card-label">HOW FORECASTING WORKS</div>
+        <h3>Holt's Double Exponential Smoothing</h3>
+        <p class="card-desc">We apply trend-aware exponential smoothing to your entropy history, then extrapolate forward N steps. If the forecast crosses the critical threshold, you get an early warning with the exact step count.</p>
+        <div class="hiw-formula">Level(t) = α·H(t) + (1-α)·(Level(t-1) + Trend(t-1))</div>
+    </div>
+    <div class="card">
+        <div class="card-label">INPUT</div>
+        <h3>Entropy History</h3>
+        <p class="card-desc">Paste comma-separated entropy values (at least 3). Or run Basic mode a few times to populate the history, then click "Use Current History".</p>
+        <textarea id="forecastInput" class="textarea mt" placeholder="0.2, 0.25, 0.31, 0.38, 0.45, 0.52"></textarea>
+        <div class="btn-row mt">
+            <button class="btn-outline" onclick="useCurrentHistory()">↺ Use Current History</button>
+        </div>
+        <div class="forecast-options mt">
+            <div class="synth-field">
+                <label>Forecast Steps</label>
+                <input type="number" id="forecastSteps" value="5" min="1" max="20">
+            </div>
+            <div class="synth-field">
+                <label>Critical Threshold</label>
+                <input type="number" id="forecastThreshold" value="0.7" min="0.1" max="1" step="0.05">
+            </div>
+            <button id="btnForecast" data-label="Forecast" class="btn-primary" style="align-self:flex-end">↗ Forecast</button>
+        </div>
+    </div>
+    <div id="forecastResults" class="hidden">
+        <div class="results-grid mt">
+            <div class="card hero-card">
+                <div class="card-glow"></div>
+                <div class="hero-label">CROSSING IN</div>
+                <div class="kpi-value" id="fc_crossing">--</div>
+                <div class="kpi-sub">steps</div>
+            </div>
+            <div class="card">
+                <div class="card-label">FORECAST</div>
+                <h3>Predicted Values</h3>
+                <div id="fc_values" class="chip-list"></div>
+            </div>
+            <div class="card">
+                <div class="card-label">ALERT</div>
+                <h3>Early Warning</h3>
+                <p id="fc_alert" class="insight-text">–</p>
+            </div>
+        </div>
+        <div class="card mt">
+            <div class="card-label">FORECAST CHART</div>
+            <h3>History + Forecasted Entropy</h3>
+            <div class="chart-wrap"><canvas id="forecastChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================
+     CALIBRATION
+======================================================== -->
+<div id="calibrationPage" class="page hidden">
+    <div class="page-header">
+        <div><h1 class="page-heading">Calibration Scorer</h1><p class="page-desc">Measure Expected Calibration Error (ECE) — does model confidence match real accuracy?</p></div>
+    </div>
+    <div class="card mb20">
+        <div class="card-label">WHAT IS CALIBRATION?</div>
+        <h3>Expected Calibration Error (ECE)</h3>
+        <p class="card-desc">A perfectly calibrated model that says "I'm 80% confident" should be correct 80% of the time. ECE measures the gap between stated confidence and actual accuracy. ECE = 0 is perfect; ECE &gt; 0.2 is severely miscalibrated.</p>
+        <div class="hiw-formula">ECE = Σ (|Bₘ|/n) · |acc(Bₘ) − conf(Bₘ)|</div>
+    </div>
+    <div class="card">
+        <div class="card-label">INPUT</div>
+        <h3>Prediction Data (JSON)</h3>
+        <p class="card-desc">Paste an array of predictions. Each has a <code>confidence</code> (0–1) and <code>correct</code> (true/false).</p>
+        <textarea id="calibrationInput" class="textarea mt" style="height:160px" placeholder='[{"confidence": 0.9, "correct": true}, {"confidence": 0.4, "correct": false}, ...]'></textarea>
+        <div class="btn-row mt">
+            <button class="btn-outline" onclick="loadCalibrationDemo()">⚡ Load Demo Data</button>
+            <button id="btnCalibration" data-label="Score Calibration" class="btn-primary">◎ Score Calibration</button>
+        </div>
+    </div>
+    <div id="calibrationResults" class="hidden">
+        <div class="results-grid mt">
+            <div class="card hero-card">
+                <div class="card-glow"></div>
+                <div class="hero-label">ECE SCORE</div>
+                <div class="kpi-value" id="cal_ece">--</div>
+                <div class="kpi-sub">lower = better</div>
+            </div>
+            <div class="card">
+                <div class="card-label">RESULT</div>
+                <h3>Calibration Quality</h3>
+                <div class="r-row"><span class="r-key">Quality</span><span class="r-val" id="cal_quality">–</span></div>
+                <div class="r-row"><span class="r-key">Samples</span><span class="r-val" id="cal_samples">–</span></div>
+            </div>
+            <div class="card">
+                <div class="card-label">INSIGHT</div>
+                <h3>Recommendation</h3>
+                <p id="cal_insight" class="insight-text">–</p>
+            </div>
+        </div>
+        <div class="card mt">
+            <div class="card-label">RELIABILITY DIAGRAM</div>
+            <h3>Confidence vs Accuracy by Bin</h3>
+            <div class="chart-wrap"><canvas id="calChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================
+     OVERVIEW
+======================================================== -->
+<div id="overviewPage" class="page hidden">
+    <div class="page-header"><div><h1 class="page-heading">System Overview</h1><p class="page-desc">High-level model health snapshot</p></div></div>
+    <div class="stat-grid">
+        <div class="card stat-card"><div class="card-label">STABILITY</div><div class="stat-big safe-col">78%</div><p>Within safe entropy boundaries.</p></div>
+        <div class="card stat-card"><div class="card-label">AVG ENTROPY</div><div class="stat-big">0.32</div><p>Below critical threshold of 0.6.</p></div>
+        <div class="card stat-card"><div class="card-label">TIPPING</div><div class="stat-big safe-col">SAFE</div><p>No anomalous drift detected.</p></div>
+        <div class="card stat-card"><div class="card-label">UPTIME</div><div class="stat-big">100%</div><p>Flask backend running without errors.</p></div>
+    </div>
+</div>
+
+<!-- ========================================================
+     MODULES
+======================================================== -->
+<div id="modulesPage" class="page hidden">
+    <div class="page-header"><div><h1 class="page-heading">Core Modules</h1><p class="page-desc">Engines powering ModelPulse v2.0</p></div></div>
+    <div class="module-grid">
+        <div class="card module-card"><div class="mod-icon">Σ</div><div class="card-label">MODULE 01</div><h3>Entropy Engine</h3><p>Binary Shannon entropy H(p) = -(p·log₂p + (1-p)·log₂(1-p)) for each confidence score.</p><div class="mod-tag">Python · math.log2</div></div>
+        <div class="card module-card"><div class="mod-icon">⚡</div><div class="card-label">MODULE 02</div><h3>Tipping Detector</h3><p>Rolling window drift detection classifying Safe / Warning / Critical states.</p><div class="mod-tag">Rolling Window · Trend Analysis</div></div>
+        <div class="card module-card"><div class="mod-icon">◉</div><div class="card-label">MODULE 03</div><h3>Blackbox Analyzer</h3><p>Categorical entropy over repeated query response distribution.</p><div class="mod-tag">Categorical Entropy · Simulation</div></div>
+        <div class="card module-card"><div class="mod-icon">∆</div><div class="card-label">MODULE 04</div><h3>KL Divergence</h3><p>Measures distribution shift between current and baseline model outputs.</p><div class="mod-tag">Information Theory · Drift</div></div>
+        <div class="card module-card"><div class="mod-icon">⇆</div><div class="card-label">MODULE 05</div><h3>Model Comparison</h3><p>Side-by-side entropy analysis of two models to determine which degrades faster.</p><div class="mod-tag">Comparative Analysis · CSV</div></div>
+        <div class="card module-card"><div class="mod-icon">↗</div><div class="card-label">MODULE 06</div><h3>Temporal Forecast</h3><p>Holt's double exponential smoothing to predict entropy crossing critical threshold.</p><div class="mod-tag">Time Series · Forecasting</div></div>
+        <div class="card module-card"><div class="mod-icon">◎</div><div class="card-label">MODULE 07</div><h3>Calibration Scorer</h3><p>Expected Calibration Error (ECE) — does confidence match real accuracy?</p><div class="mod-tag">ECE · Reliability Diagram</div></div>
+        <div class="card module-card"><div class="mod-icon">🔗</div><div class="card-label">MODULE 08</div><h3>Chat Link Analyzer</h3><p>Scrapes Claude/ChatGPT share links and computes linguistic entropy of AI responses.</p><div class="mod-tag">Playwright · Linguistic Entropy</div></div>
+    </div>
+</div>
+
+<!-- ========================================================
+     HOW IT WORKS
+======================================================== -->
+<div id="howItWorksPage" class="page hidden">
+    <div class="page-header"><div><h1 class="page-heading">How It Works</h1><p class="page-desc">Step-by-step methodology walkthrough</p></div></div>
+    <div class="hiw-flow">
+        <div class="hiw-step"><div class="hiw-num">01</div><div class="card hiw-card"><div class="card-label">INPUT</div><h3>Confidence Scores</h3><p>A model's confidence score (0–1) represents certainty about its output. Values near 0 or 1 = high certainty. Near 0.5 = maximum uncertainty.</p><div class="hiw-formula">P(output) ∈ [0.0, 1.0]</div></div></div>
+        <div class="hiw-arrow">▼</div>
+        <div class="hiw-step"><div class="hiw-num">02</div><div class="card hiw-card"><div class="card-label">COMPUTATION</div><h3>Shannon Entropy</h3><p>Binary Shannon entropy converts raw probability to uncertainty measure. Entropy 0 = fully deterministic. Entropy 1 = completely random.</p><div class="hiw-formula">H(p) = −(p·log₂p + (1−p)·log₂(1−p))</div></div></div>
+        <div class="hiw-arrow">▼</div>
+        <div class="hiw-step"><div class="hiw-num">03</div><div class="card hiw-card"><div class="card-label">DRIFT DETECTION</div><h3>Rolling Window</h3><p>Entropy readings stored in rolling window. Monotonic increase and drift velocity identify genuine model degradation vs noise.</p><div class="hiw-formula">drift = H(t) − H(t−2)</div></div></div>
+        <div class="hiw-arrow">▼</div>
+        <div class="hiw-step"><div class="hiw-num">04</div><div class="card hiw-card"><div class="card-label">EARLY WARNING</div><h3>Tipping Classification</h3><p>Three alert states give engineers time to retrain before production failure.</p><div class="hiw-pills"><span class="pill safe">✅ SAFE</span><span class="pill warning">⚠️ WARNING</span><span class="pill critical">🔴 CRITICAL</span></div></div></div>
+        <div class="hiw-arrow">▼</div>
+        <div class="hiw-step"><div class="hiw-num">05</div><div class="card hiw-card"><div class="card-label">OUTPUT</div><h3>Stability Score &amp; Insight</h3><p>Final Stability Score (0–100) from average entropy. Insight panel gives human-readable recommendation with action items.</p><div class="hiw-formula">Stability = (1 − avg_entropy) × 100</div></div></div>
+    </div>
+</div>
+
+<!-- ========================================================
+     DATASET RESOURCES
+======================================================== -->
+<div id="resourcesPage" class="page hidden">
+    <div class="page-header"><div><h1 class="page-heading">Dataset Resources</h1><p class="page-desc">Curated datasets, format guide &amp; synthetic data generator</p></div></div>
+    <div class="card resource-guide mb20">
+        <div class="card-label">CSV FORMAT</div><h3>Required File Specification</h3>
+        <p class="card-desc">CSV must have a column named exactly <code>confidence</code> with float values in [0.0, 1.0].</p>
+        <div class="csv-preview"><pre>confidence
+0.91
+0.87
+0.54
+0.32
+0.78</pre></div>
+        <button class="btn-primary mt" onclick="downloadSampleCSV()">⬇ Download Sample CSV</button>
+    </div>
+    <div class="resource-grid">
+        <div class="card resource-card"><div class="res-badge public">PUBLIC</div><div class="card-label">KAGGLE</div><h3>Model Confidence Datasets</h3><p>Search "model predictions confidence" for hundreds of ML experiment logs.</p><a href="https://www.kaggle.com/datasets?search=model+confidence" target="_blank" class="res-link">Open Kaggle →</a></div>
+        <div class="card resource-card"><div class="res-badge public">PUBLIC</div><div class="card-label">UCI REPOSITORY</div><h3>Probability Output Datasets</h3><p>Classification datasets whose probabilities can be fed into ModelPulse.</p><a href="https://archive.ics.uci.edu/ml/index.php" target="_blank" class="res-link">Open UCI →</a></div>
+        <div class="card resource-card"><div class="res-badge research">RESEARCH</div><div class="card-label">HUGGING FACE</div><h3>LLM Output Probabilities</h3><p>Convert token log-probabilities from HuggingFace models into confidence scores.</p><a href="https://huggingface.co/datasets" target="_blank" class="res-link">Open HuggingFace →</a></div>
+        <div class="card resource-card"><div class="res-badge synth">SYNTHETIC</div><div class="card-label">GENERATOR</div><h3>Synthetic Stress Test Data</h3><p>Generate drift patterns locally to test ModelPulse's tipping detection.</p><button class="btn-outline mt" onclick="generateSyntheticData()">⚡ Generate &amp; Download</button></div>
+    </div>
+    <div class="card synth-card mt">
+        <div class="card-label">SYNTHETIC GENERATOR</div><h3>Create Custom Test Datasets</h3>
+        <div class="synth-row">
+            <div class="synth-field"><label>Rows</label><input type="number" id="synthRows" value="50" min="10" max="1000"></div>
+            <div class="synth-field"><label>Pattern</label><select id="synthPattern"><option value="stable">Stable</option><option value="drifting">Drifting</option><option value="collapse">Collapse</option><option value="noisy">Noisy</option></select></div>
+            <button class="btn-primary" onclick="generateSyntheticData()">⚡ Generate</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================
+     RESULTS
+======================================================== -->
+<div id="resultsPage" class="page hidden">
+    <div class="page-header"><div><h1 class="page-heading">Analysis Results</h1><p class="page-desc">Dataset entropy analysis output</p></div></div>
+    <div class="results-grid">
+        <div class="card hero-card"><div class="card-glow"></div><div class="hero-label">STABILITY SCORE</div><div class="kpi-value" id="res_mainScore">--</div><div class="kpi-sub">/ 100</div></div>
+        <div class="card"><div class="card-label">METRICS</div><h3>Dataset Statistics</h3>
+            <div class="r-row"><span class="r-key">Rows Analyzed</span><span class="r-val" id="res_rows">–</span></div>
+            <div class="r-row"><span class="r-key">Avg Entropy</span><span class="r-val" id="res_entropy">–</span></div>
+            <div class="r-row"><span class="r-key">Instability Score</span><span class="r-val" id="res_instability">–</span></div>
+            <div class="r-row"><span class="r-key">Tipping Status</span><span class="r-val" id="res_status">–</span></div>
+        </div>
+        <div class="card"><div class="card-label">INSIGHT</div><h3>Recommendation</h3><p id="res_insight" class="insight-text">Upload a dataset to see insights.</p></div>
+    </div>
+</div>
+
+<!-- ========================================================
+     SETTINGS
+======================================================== -->
+<div id="settingsPage" class="page hidden">
+    <div class="page-header"><div><h1 class="page-heading">Settings</h1><p class="page-desc">Configure ModelPulse preferences</p></div></div>
+    <div class="stat-grid">
+        <div class="card"><div class="card-label">APPEARANCE</div><h3>Theme</h3><p>Toggle dark / light mode.</p><button class="btn-primary mt" onclick="toggleTheme()">🌗 Toggle Theme</button></div>
+        <div class="card"><div class="card-label">BACKEND</div><h3>API Config</h3><p>Base URL: <code>http://127.0.0.1:5000</code></p><p style="margin-top:8px;opacity:.55;font-size:.82rem">Start Flask before using analysis features.</p></div>
+        <div class="card"><div class="card-label">PLAYWRIGHT</div><h3>Chat Link Setup</h3><p>For the Chat Link Analyzer feature, install:</p><div class="csv-preview" style="margin-top:10px"><pre>pip install playwright
+playwright install chromium</pre></div></div>
+        <div class="card"><div class="card-label">VERSION</div><h3>Build Info</h3><p>ModelPulse v2.0 Beta</p><p style="margin-top:6px;opacity:.45;font-size:.8rem">8 Analysis Modules · Flask + Chart.js</p></div>
+    </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /layout -->
+</div><!-- /app -->
+
+<script src="script.js"></script>
+</body>
+</html>
