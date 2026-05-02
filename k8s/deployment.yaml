@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: modelpulse-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: modelpulse
+  template:
+    metadata:
+      labels:
+        app: modelpulse
+    spec:
+      containers:
+      - name: modelpulse-container
+        image: your-docker-username/modelpulse
+        ports:
+        - containerPort: 5000
