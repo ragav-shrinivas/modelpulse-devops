@@ -26,6 +26,7 @@ import math
 import csv
 import os
 import re
+import logging
 from collections import Counter
 from werkzeug.utils import secure_filename
 
@@ -45,6 +46,11 @@ app = Flask(
 )
 
 CORS(app)
+logging.basicConfig(level=logging.INFO)
+
+@app.before_request
+def log_request_info():
+    logging.info(f"Request: {request.method} {request.url}")
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -184,7 +190,7 @@ def analyze():
             "tipping":    tipping
         })
     except Exception as e:
-        print("ERROR /analyze:", e)
+        logging.error(f"ERROR /analyze: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -757,10 +763,8 @@ def _demo_chat_analysis(url, platform):
 
 if __name__ == "__main__":
     # debug=False for production / Docker
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, debug=False)
 
 print("CI/CD is working 🚀")
 
-@app.route("/health", methods=["GET"])
-def health():
-    return {"status": "ok"}, 200
