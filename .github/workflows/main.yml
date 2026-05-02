@@ -29,3 +29,6 @@ jobs:
 
       - name: Done
         run: echo "CI pipeline passed 🚀"
+
+      - name: Trigger Render Deploy
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
