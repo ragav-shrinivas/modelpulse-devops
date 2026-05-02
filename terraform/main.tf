@@ -1,12 +1,7 @@
-provider "aws" {
-  region = "us-east-1"
-}
+provider "null" {}
 
-resource "aws_instance" "modelpulse" {
-  ami           = "ami-0c02fb55956c7d316"
-  instance_type = "t2.micro"
-
-  tags = {
-    Name = "modelpulse-terraform"
+resource "null_resource" "app_deploy" {
+  provisioner "local-exec" {
+    command = "echo 'Simulating deployment via Terraform'"
   }
 }
