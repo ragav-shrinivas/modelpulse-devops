@@ -1,6 +1,14 @@
+<<<<<<< HEAD
 services:
   - type: web
     name: modelpulse
     runtime: python
     buildCommand: "pip install -r requirements.txt && python -m playwright install chromium"
+=======
+services:
+  - type: web
+    name: modelpulse
+    runtime: python
+    buildCommand: "pip install -r requirements.txt && python -m playwright install chromium"
+>>>>>>> 500dd903497dd5c2a1a7b7d60deff3813e4ffdf5
     startCommand: "gunicorn app:app"
