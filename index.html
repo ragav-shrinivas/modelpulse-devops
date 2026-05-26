@@ -6,7 +6,8 @@
     <title>ModelPulse – Entropy-Based Early Warning System</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -185,15 +186,45 @@
 
     <div class="card chat-input-card mb20">
         <div class="card-label">INPUT</div>
-        <h3>Share Link</h3>
-        <p class="card-desc">Supports: <code>claude.ai/share/...</code> and <code>chatgpt.com/share/...</code></p>
-        <div class="url-input-row mt">
-            <input type="url" id="chatLinkInput" placeholder="https://claude.ai/share/... or https://chatgpt.com/share/...">
-            <button id="btnAnalyzeChat" data-label="Analyze Link" class="btn-primary">🔍 Analyze</button>
+
+        <!-- Mode toggle -->
+        <div class="chat-mode-toggle" style="display:flex;gap:8px;margin-bottom:14px">
+            <button id="modeUrlBtn"   class="btn-primary"   data-mode="url">🔗 Share Link</button>
+            <button id="modePasteBtn" class="btn-secondary" data-mode="paste">📝 Paste Conversation</button>
         </div>
-        <div class="platform-hints">
-            <span class="platform-chip claude-chip">Claude: Share → Copy Link</span>
-            <span class="platform-chip gpt-chip">ChatGPT: Share → Copy Link</span>
+
+        <!-- URL mode -->
+        <div id="chatModeUrl">
+            <h3>Share Link</h3>
+            <p class="card-desc">Supports: <code>claude.ai/share/...</code> and <code>chatgpt.com/share/...</code></p>
+            <div class="url-input-row mt">
+                <input type="url" id="chatLinkInput" placeholder="https://claude.ai/share/... or https://chatgpt.com/share/...">
+                <button id="btnAnalyzeChat" data-label="Analyze Link" class="btn-primary">🔍 Analyze</button>
+            </div>
+            <div class="platform-hints">
+                <span class="platform-chip claude-chip">Claude: Share → Copy Link</span>
+                <span class="platform-chip gpt-chip">ChatGPT: Share → Copy Link</span>
+            </div>
+        </div>
+
+        <!-- Paste mode (hidden by default) -->
+        <div id="chatModePaste" class="hidden">
+            <h3>Paste Conversation</h3>
+            <p class="card-desc">Paste each AI response separated by a blank line. Works when scraping is blocked (e.g. Cloudflare on ChatGPT shares).</p>
+            <div style="display:flex;gap:8px;align-items:center;margin:8px 0 10px">
+                <label class="card-desc" style="margin:0">Platform:</label>
+                <select id="chatPastePlatform" style="background:#1a1a1a;color:#eee;border:1px solid #333;padding:6px 10px;border-radius:6px">
+                    <option value="claude">Claude</option>
+                    <option value="chatgpt">ChatGPT</option>
+                </select>
+            </div>
+            <textarea id="chatPasteInput"
+                placeholder="Paste assistant responses here, one per paragraph...&#10;&#10;Separate each message with a blank line.&#10;&#10;Example: The capital of France is Paris.&#10;&#10;Paris has been the capital since 987 AD."
+                style="width:100%;min-height:220px;background:#0f0f0f;color:#eee;border:1px solid #333;padding:12px;border-radius:8px;font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.5;resize:vertical"></textarea>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+                <span class="card-desc" id="chatPasteCount">0 messages detected</span>
+                <button id="btnAnalyzePaste" data-label="Analyze Text" class="btn-primary">🔍 Analyze</button>
+            </div>
         </div>
     </div>
 
