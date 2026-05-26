@@ -87,20 +87,53 @@ function setupSidebar() {
 // ─────────────────────────────────────────────
 function bindButtons() {
     const bindings = {
-        "btnBasic":       analyze,
-        "btnBlackbox":    analyzeBlackbox,
-        "btnUpload":      uploadDataset,
-        "btnAnalyzeChat": analyzeChatLink,
-        "btnKL":          computeKL,
-        "btnCompare":     compareModels,
-        "btnForecast":    runForecast,
-        "btnCalibration": scoreCalibration,
+        "btnBasic":        analyze,
+        "btnBlackbox":     analyzeBlackbox,
+        "btnUpload":       uploadDataset,
+        "btnAnalyzeChat":  analyzeChatLink,
+        "btnAnalyzePaste": analyzeChatPaste,    // NEW v3.0
+        "modeUrlBtn":      () => switchChatMode("url"),
+        "modePasteBtn":    () => switchChatMode("paste"),
+        "btnKL":           computeKL,
+        "btnCompare":      compareModels,
+        "btnForecast":     runForecast,
+        "btnCalibration":  scoreCalibration,
     };
 
     for (const [id, fn] of Object.entries(bindings)) {
         const btn = document.getElementById(id);
         if (btn) btn.addEventListener("click", fn);
-        else console.error("❌ Button not found:", id);
+        else console.error("Button not found:", id);
+    }
+
+    // Live message-count in the paste textarea
+    const ta = document.getElementById("chatPasteInput");
+    if (ta) {
+        ta.addEventListener("input", () => {
+            const count = ta.value.split(/\n\s*\n+/).filter(s => s.trim().length > 10).length;
+            const el = document.getElementById("chatPasteCount");
+            if (el) el.textContent = `${count} message${count === 1 ? "" : "s"} detected`;
+        });
+    }
+}
+
+// Toggle URL <-> Paste mode for the Chat Link Analyzer
+function switchChatMode(mode) {
+    const urlPane   = document.getElementById("chatModeUrl");
+    const pastePane = document.getElementById("chatModePaste");
+    const urlBtn    = document.getElementById("modeUrlBtn");
+    const pasteBtn  = document.getElementById("modePasteBtn");
+    if (!urlPane || !pastePane) return;
+    if (mode === "paste") {
+        urlPane.classList.add("hidden");
+        pastePane.classList.remove("hidden");
+        urlBtn?.classList.remove("btn-primary");   urlBtn?.classList.add("btn-secondary");
+        pasteBtn?.classList.remove("btn-secondary"); pasteBtn?.classList.add("btn-primary");
+    } else {
+        urlPane.classList.remove("hidden");
+        pastePane.classList.add("hidden");
+        urlBtn?.classList.remove("btn-secondary"); urlBtn?.classList.add("btn-primary");
+        pasteBtn?.classList.remove("btn-primary"); pasteBtn?.classList.add("btn-secondary");
     }
 }
 
@@ -265,43 +298,122 @@ async function analyzeChatLink() {
 
     try {
         const data = await post(`${API}/analyze-chat-link`, { url });
-
-        // Show results section
-        document.getElementById("chatLinkResults")?.classList.remove("hidden");
-
-        animateValue("cl_score", 0, data.stability_score ?? 0, 900);
-        setText("cl_platform",  data.platform);
-        setText("cl_msgs",      data.total_messages);
-        setText("cl_words",     data.total_words);
-        setText("cl_vocab",     data.vocab_entropy?.toFixed(4));
-        setText("cl_length",    data.length_entropy?.toFixed(4));
-        setText("cl_hedge",     data.hedge_score?.toFixed(4));
-        setText("cl_variance",  data.response_variance?.toFixed(4));
-        setText("cl_composite", data.composite_entropy?.toFixed(4));
-        setText("cl_tipping",   data.tipping);
-        setText("cl_insight",   data.insight);
-
-        // Sample messages
-        const samplesEl = document.getElementById("cl_samples");
-        if (samplesEl && data.sample_messages) {
-            samplesEl.innerHTML = "";
-            data.sample_messages.forEach((msg, i) => {
-                const div = document.createElement("div");
-                div.className = "sample-msg";
-                div.innerHTML = `<span class="sample-num">${i + 1}</span><span>${escHtml(msg)}</span>`;
-                samplesEl.appendChild(div);
-            });
+        renderChatAnalysis(data);
+    } catch (e) {
+        // Auto-switch to paste mode when scrape strategies all fail
+        const msg = (e && e.message) || "";
+        if (msg.includes("scrape") || msg.includes("paste") || msg.includes("strategies failed")) {
+            showInfo("Scraping was blocked (Cloudflare / SPA). Switching to paste mode — paste the conversation and click Analyze.");
+            switchChatMode("paste");
+        } else {
+            showError(msg || "Analysis failed.");
         }
-
-        // Demo warning
-        const warn = document.getElementById("chatDemoWarning");
-        if (warn) warn.classList.toggle("hidden", !data.demo_mode);
-
-        // Apply tipping class
-        applyTippingClass("chatLinkResults", data.tipping);
-
-    } catch (e) { showError(e.message); }
+    }
     finally { setLoading("btnAnalyzeChat", false); }
+}
+
+// v3.0 paste-mode handler
+async function analyzeChatPaste() {
+    const txt = document.getElementById("chatPasteInput")?.value || "";
+    const platform = document.getElementById("chatPastePlatform")?.value || "claude";
+    if (!txt.trim()) return showError("Paste at least one assistant message.");
+
+    // Split by blank-line boundaries; keep only chunks > 10 chars
+    const messages = txt.split(/\n\s*\n+/)
+                        .map(s => s.trim())
+                        .filter(s => s.length > 10);
+    if (messages.length === 0) {
+        return showError("No messages detected. Separate each AI response with a blank line.");
+    }
+
+    setLoading("btnAnalyzePaste", true);
+    document.getElementById("chatLinkResults")?.classList.add("hidden");
+
+    try {
+        const data = await post(`${API}/analyze-chat-text`, { messages, platform });
+        renderChatAnalysis(data);
+    } catch (e) {
+        showError((e && e.message) || "Analysis failed.");
+    } finally {
+        setLoading("btnAnalyzePaste", false);
+    }
+}
+
+// Shared render function used by both URL and paste modes
+function renderChatAnalysis(data) {
+    document.getElementById("chatLinkResults")?.classList.remove("hidden");
+
+    animateValue("cl_score", 0, data.stability_score ?? 0, 900);
+    setText("cl_platform",  data.platform);
+    setText("cl_msgs",      data.total_messages);
+    setText("cl_words",     data.total_words);
+    setText("cl_vocab",     data.vocab_entropy?.toFixed(4));
+    setText("cl_length",    data.length_entropy?.toFixed(4));
+    setText("cl_hedge",     data.hedge_score?.toFixed(4));
+    setText("cl_variance",  data.response_variance?.toFixed(4));
+    setText("cl_composite", data.composite_entropy?.toFixed(4));
+    setText("cl_tipping",   data.tipping);
+    setText("cl_insight",   data.insight);
+
+    // Sample messages
+    const samplesEl = document.getElementById("cl_samples");
+    if (samplesEl && data.sample_messages) {
+        samplesEl.innerHTML = "";
+        data.sample_messages.forEach((msg, i) => {
+            const div = document.createElement("div");
+            div.className = "sample-msg";
+            div.innerHTML = `<span class="sample-num">${i + 1}</span><span>${escHtml(msg)}</span>`;
+            samplesEl.appendChild(div);
+        });
+    }
+
+    // v3.0: append novelty-layer summary if present
+    renderNoveltyExtras(data);
+
+    // Demo warning (legacy; only shows in v2 demo-mode response, which we
+    // never return in v3 — but kept for back-compat)
+    const warn = document.getElementById("chatDemoWarning");
+    if (warn) warn.classList.toggle("hidden", !data.demo_mode);
+
+    applyTippingClass("chatLinkResults", data.tipping);
+}
+
+// v3.0: surface MSED + drift + hedge cascade in the existing Insight card
+function renderNoveltyExtras(data) {
+    const ins = document.getElementById("cl_insight");
+    if (!ins) return;
+    let extras = "";
+    if (data.msed) {
+        extras += `<div class="r-row mt"><span class="r-key">MSED composite</span><span class="r-val">${data.msed.composite}</span></div>`;
+        extras += `<div class="r-row"><span class="r-key">Dominant scale</span><span class="r-val">${data.msed.dominant_scale}</span></div>`;
+        extras += `<div class="r-row"><span class="r-key">Scale decoupling</span><span class="r-val">${data.msed.coupling?.decoupling_index ?? "-"}</span></div>`;
+    }
+    if (data.hedge_cascade) {
+        extras += `<div class="r-row"><span class="r-key">Hedge cascade</span><span class="r-val">${data.hedge_cascade.cascade_detected ? "DETECTED" : "no"}</span></div>`;
+        extras += `<div class="r-row"><span class="r-key">Dominant hedge</span><span class="r-val">${data.hedge_cascade.dominant_category}</span></div>`;
+    }
+    if (data.drift_trajectory) {
+        extras += `<div class="r-row"><span class="r-key">Drift peak</span><span class="r-val">${data.drift_trajectory.peak_drift}</span></div>`;
+        extras += `<div class="r-row"><span class="r-key">Early-warning</span><span class="r-val">${data.drift_trajectory.early_warning ? "YES" : "no"}</span></div>`;
+    }
+    if (data.scrape_strategy) {
+        extras += `<div class="r-row"><span class="r-key">Strategy</span><span class="r-val">${data.scrape_strategy}</span></div>`;
+    }
+    if (extras) {
+        // Append extras after the insight text
+        const existing = ins.parentElement.querySelector(".novelty-extras");
+        if (existing) existing.remove();
+        const div = document.createElement("div");
+        div.className = "novelty-extras";
+        div.style.marginTop = "12px";
+        div.innerHTML = `<div class="card-label" style="margin-bottom:6px">V3.0 NOVELTY LAYER</div>${extras}`;
+        ins.parentElement.insertBefore(div, ins.nextSibling);
+    }
+}
+
+// Toast helper for non-fatal info messages
+function showInfo(msg) {
+    try { alert(msg); } catch (_) { console.log("INFO:", msg); }
 }
 
 // ─────────────────────────────────────────────
