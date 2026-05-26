@@ -3,3 +3,6 @@ flask-cors
 playwright
 gunicorn
 sentry-sdk
+requests
+# pytest is only needed for the verification suite under /tests
+pytest
